@@ -48,7 +48,8 @@ class FaceDetector(object):
             self.h = tf.get_default_graph().get_tensor_by_name("h:0")
 
     # Receives RGB numpy array
-    def predict(self, frame, thresh=0.85):
+    def predict(self, frame, thresh=None):
+        thresh = thresh or 0.85
         input_img = cv2.resize(frame, (YOLO_SIZE, YOLO_SIZE)) / 255.
         input_img = np.expand_dims(input_img, axis=0)
 

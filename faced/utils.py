@@ -1,5 +1,6 @@
 import cv2
 
+
 def iou(bbox1, bbox2):
     # determine the (x, y)-coordinates of the intersection rectangle
     boxA = bbox1[0] - bbox1[2]/2, bbox1[1] - bbox1[3]/2, bbox1[0] + bbox1[2]/2, bbox1[1] + bbox1[3]/2
@@ -29,3 +30,11 @@ def annotate_image(frame, bboxes):
         cv2.rectangle(ret, (int(x - w/2), int(y - h/2)), (int(x + w/2), int(y + h/2)), (0, 255, 0), 3)
 
     return ret
+
+
+def bbox_jsonable(bbox):
+    return (*bbox[:4], float(bbox[4]))
+
+
+def bboxes_jsonable(bboxes):
+    return [bbox_jsonable(bbox) for bbox in bboxes]

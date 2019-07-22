@@ -146,7 +146,8 @@ ENV/
 env.bak/
 venv.bak/
 
-# Spyder project settings
+# IDE junk
+.idea
 .spyderproject
 .spyproject
 

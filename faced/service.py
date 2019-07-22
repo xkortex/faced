@@ -1,20 +1,43 @@
 #!/usr/bin/env python
 
-import cv2
 import sys
 import os
 import time
 import argparse
 
-from faced.detector import FaceDetector
-from faced.utils import annotate_image
+
+class DummyVidCap(object):
+    def __init__(self, *args, **kwargs):
+        """Does nothing but provides release()"""
+    def __bool__(self):
+        return False
+
+    def release(self):
+        pass
 
 
 def load_arguments():
-    parser = argparse.ArgumentParser(description='Detect faces in images, videos or webcam.')
-    parser.add_argument("-i", "--input", help="Path to image, video or just 'webcam' for live detection.")
-    parser.add_argument("-t", "--threshold", help="0 to 1 float number specifying selectivity.")
-    parser.add_argument("-s", "--save", help="If this option is specified, result will be saved in `output` file. It does not work with webcam option.", action='store_true')
+    parser = argparse.ArgumentParser(
+        description='Detect faces in images, videos or webcam.')
+    parser.add_argument("-i", "--input", type=str,
+                        help="Path to image, video or just 'webcam' for live "
+                             "detection.")
+    parser.add_argument("-t", "--threshold", type=float, default=0.85,
+                        help="0 to 1 float number specifying selectivity.")
+    parser.add_argument("-s", "--save",
+                        help="If this option is specified, result will be "
+                             "saved in `output` file. It does not work with "
+                             "webcam option.",
+                        action='store_true')
+    parser.add_argument("-o", "--out_dir", type=str,
+                        help="output directory to place generated files",
+                        action='store')
+    parser.add_argument("-g", "--gui",
+                        help="Show the GUI output",
+                        action='store_true')
+    parser.add_argument("-v", "--verbose",
+                        help="Print verbose output",
+                        action='store_true')
 
     args = parser.parse_args()
     return args
@@ -54,27 +77,53 @@ def is_video(filename):
     return any((filename.endswith(x) for x in exts))
 
 
-def run_img(img_path, thresh, save):
+def run_img(path, thresh, save=False, out_dir=None, gui=False, verbose=False):
+    import cv2
+    import json
+    from faced.detector import FaceDetector
+    from faced.utils import bboxes_jsonable
+
+    file_out_path = os.path.join(out_dir or '/tmp', os.path.basename(path))
+
     face_detector = FaceDetector()
 
-    img = cv2.imread(img_path)
+    img = cv2.imread(path)
     rgb_img = cv2.cvtColor(img.copy(), cv2.COLOR_BGR2RGB)
 
-    if thresh:
-        bboxes = face_detector.predict(rgb_img, thresh)
-    else:
-        bboxes = face_detector.predict(rgb_img)
-    ann_img = annotate_image(img, bboxes)
+    bboxes = face_detector.predict(rgb_img, thresh)
+    bboxes = bboxes_jsonable(bboxes)
+    if verbose:
+        print(bboxes)
 
-    if save:
-        cv2.imwrite("output.png", ann_img)
-    else:
-        cv2.imshow('image',ann_img)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+    if out_dir:
+        with open(file_out_path + '.jtxt', 'a') as fp:
+            fp.write(json.dumps(bboxes) + '\n')
+            print('written to {}'.format(file_out_path))
+
+    if save or gui:
+        from faced.utils import annotate_image
+        ann_img = annotate_image(img, bboxes)
+        if save:
+            cv2.imwrite(file_out_path + ".png", ann_img)
+        if gui:
+            cv2.imshow('image', ann_img)
+            cv2.startWindowThread()
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+
+    return bboxes
 
 
-def run_video(path, thresh, save):
+def run_video(path, thresh, save=False, out_dir=None, gui=False, verbose=False):
+    import cv2
+
+    from faced.detector import FaceDetector
+    from faced.utils import bboxes_jsonable
+
+    import json
+
+    file_out_path = os.path.join(out_dir or '/tmp', os.path.basename(path))
+
     face_detector = FaceDetector()
 
     if path == 'webcam':
@@ -89,39 +138,47 @@ def run_video(path, thresh, save):
         fps = cap.get(cv2.CAP_PROP_FPS) # float
 
         fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-        out = cv2.VideoWriter("output.avi",fourcc, fps, (int(width), int(height)))
+        out_vid = cv2.VideoWriter(file_out_path + '.avi', fourcc, fps,
+                              (int(width), int(height)))
     else:
-        cv2.namedWindow("window", cv2.WND_PROP_FULLSCREEN)
-        cv2.setWindowProperty("window", cv2.WND_PROP_FULLSCREEN,cv2.WINDOW_FULLSCREEN)
+        out_vid = DummyVidCap()
 
     now = time.time()
     while cap.isOpened():
         now = time.time()
         # Capture frame-by-frame
         ret, frame = cap.read()
+        frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
+
 
         if frame.shape[0] == 0:
             break
 
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        if thresh:
-            bboxes = face_detector.predict(rgb_frame, thresh)
-        else:
-            bboxes = face_detector.predict(rgb_frame)
+        bboxes = face_detector.predict(rgb_frame, thresh)
+        bboxes = bboxes_jsonable(bboxes)
 
-        ann_frame = annotate_image(frame, bboxes)
+        if out_dir:
+            with open(file_out_path + '.jtxt', 'a') as fp:
+                fp.write(json.dumps(bboxes) + '\n')
 
-        if save:
-            out.write(frame)
-        else:
-            cv2.imshow('window', ann_frame)
-        print("FPS: {:0.2f}".format(1 / (time.time() - now)), end="\r", flush=True)
+        if save or gui:
+            from faced.utils import annotate_image
+            ann_frame = annotate_image(frame, bboxes)
+            if save:
+                out_vid.write(frame)
+            if gui:
+                cv2.imshow('window', ann_frame)
+
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+
+        print("FPS: {:0.2f}".format(1 / (time.time() - now)), end="\r", flush=True)
+
     # When everything done, release the capture
     cap.release()
-    cv2.destroyAllWindows()
+    out_vid.release()
 
 
 if __name__ == "__main__":
@@ -140,6 +197,6 @@ if __name__ == "__main__":
     t = None if not args.threshold else float(args.threshold)
 
     if is_video(path) or path == 'webcam':
-        run_video(path, t, args.save)
+        run_video(path, t, args.save, args.out_dir, args.gui, args.verbose)
     else:
-        run_img(path, t, args.save)
+        run_img(path, t, args.save, args.out_dir, args.gui, args.verbose)
