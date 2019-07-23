@@ -150,7 +150,8 @@ def run_video(path, thresh, save=False, out_dir=None, gui=False, verbose=False):
         ret, frame = cap.read()
         frame_num = cap.get(cv2.CAP_PROP_POS_FRAMES)
 
-
+        if frame is None:
+            break
         if frame.shape[0] == 0:
             break
 
@@ -170,8 +171,8 @@ def run_video(path, thresh, save=False, out_dir=None, gui=False, verbose=False):
             if gui:
                 cv2.imshow('window', ann_frame)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+                if cv2.waitKey(1) & 0xFF == ord('q'):
+                    break
 
 
         print("FPS: {:0.2f}".format(1 / (time.time() - now)), end="\r", flush=True)
