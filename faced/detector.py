@@ -26,11 +26,11 @@ class FaceDetector(object):
     def load_model(self, yolo_model, from_pb=True):
         graph = tf.Graph()
         with graph.as_default():
-            self.sess = tf.Session()
+            self.sess = tf.compat.v1.Session()
 
             if from_pb:
-                with tf.gfile.GFile(yolo_model, "rb") as f:
-                    graph_def = tf.GraphDef()
+                with tf.compat.v1.gfile.GFile(yolo_model, "rb") as f:
+                    graph_def = tf.compat.v1.GraphDef()
                     graph_def.ParseFromString(f.read())
                     tf.import_graph_def(graph_def, name="") # If not, name is appended in op name
 
@@ -39,13 +39,13 @@ class FaceDetector(object):
                 saver = tf.train.import_meta_graph('{}.meta'.format(ckpt_path))
                 saver.restore(self.sess, ckpt_path)
 
-            self.img = tf.get_default_graph().get_tensor_by_name("img:0")
-            self.training = tf.get_default_graph().get_tensor_by_name("training:0")
-            self.prob = tf.get_default_graph().get_tensor_by_name("prob:0")
-            self.x_center = tf.get_default_graph().get_tensor_by_name("x_center:0")
-            self.y_center = tf.get_default_graph().get_tensor_by_name("y_center:0")
-            self.w = tf.get_default_graph().get_tensor_by_name("w:0")
-            self.h = tf.get_default_graph().get_tensor_by_name("h:0")
+            self.img = tf.compat.v1.get_default_graph().get_tensor_by_name("img:0")
+            self.training = tf.compat.v1.get_default_graph().get_tensor_by_name("training:0")
+            self.prob = tf.compat.v1.get_default_graph().get_tensor_by_name("prob:0")
+            self.x_center = tf.compat.v1.get_default_graph().get_tensor_by_name("x_center:0")
+            self.y_center = tf.compat.v1.get_default_graph().get_tensor_by_name("y_center:0")
+            self.w = tf.compat.v1.get_default_graph().get_tensor_by_name("w:0")
+            self.h = tf.compat.v1.get_default_graph().get_tensor_by_name("h:0")
 
     # Receives RGB numpy array
     def predict(self, frame, thresh=None):
@@ -142,10 +142,10 @@ class FaceCorrector(object):
     def load_model(self, corrector_model, from_pb=True):
         self.graph = tf.Graph()
         with self.graph.as_default():
-            self.sess = tf.Session()
+            self.sess = tf.compat.v1.Session()
             if from_pb:
-                with tf.gfile.GFile(corrector_model, "rb") as f:
-                    graph_def = tf.GraphDef()
+                with tf.compat.v1.gfile.GFile(corrector_model, "rb") as f:
+                    graph_def = tf.compat.v1.GraphDef()
                     graph_def.ParseFromString(f.read())
                     tf.import_graph_def(graph_def, name="") # If not, name is appended in op name
 
@@ -154,12 +154,12 @@ class FaceCorrector(object):
                 saver = tf.train.import_meta_graph('{}.meta'.format(ckpt_path))
                 saver.restore(self.sess, ckpt_path)
 
-            self.img = tf.get_default_graph().get_tensor_by_name("img:0")
-            self.training = tf.get_default_graph().get_tensor_by_name("training:0")
-            self.x = tf.get_default_graph().get_tensor_by_name("X:0")
-            self.y = tf.get_default_graph().get_tensor_by_name("Y:0")
-            self.w = tf.get_default_graph().get_tensor_by_name("W:0")
-            self.h = tf.get_default_graph().get_tensor_by_name("H:0")
+            self.img = tf.compat.v1.get_default_graph().get_tensor_by_name("img:0")
+            self.training = tf.compat.v1.get_default_graph().get_tensor_by_name("training:0")
+            self.x = tf.compat.v1.get_default_graph().get_tensor_by_name("X:0")
+            self.y = tf.compat.v1.get_default_graph().get_tensor_by_name("Y:0")
+            self.w = tf.compat.v1.get_default_graph().get_tensor_by_name("W:0")
+            self.h = tf.compat.v1.get_default_graph().get_tensor_by_name("H:0")
 
     def predict(self, frame):
         # Preprocess
